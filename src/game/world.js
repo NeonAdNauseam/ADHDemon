@@ -1,7 +1,7 @@
 import { MeshBuilder, StandardMaterial, Color3, Vector3 } from '@babylonjs/core'
 
 export function createWorld(scene) {
-  const floor = MeshBuilder.CreateGround('floor', { width: 20, height: 20 }, scene)
+  const floor = MeshBuilder.CreateGround('floor', { width: 60, height: 60 }, scene)
   const floorMat = new StandardMaterial('floorMat', scene)
   floorMat.diffuseColor = new Color3(0.3, 0.3, 0.3)
   floor.material = floorMat

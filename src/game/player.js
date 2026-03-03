@@ -5,30 +5,59 @@ export function createPlayer(scene, canvas) {
   camera.setTarget(Vector3.Zero())
   camera.attachControl(canvas, true)
 
-  camera.speed = 0.3
-  camera.angularSensibility = 2000
+  camera.speed = 1
+  camera.angularSensibility = 2500
   camera.minZ = 0.1
-
-  camera.applyGravity = true
+  camera.inertia = 0
+  camera.applyGravity = false
   camera.checkCollisions = true
   camera.ellipsoid = new Vector3(0.5, 0.9, 0.5)
-  scene.gravity = new Vector3(0, -0.98, 0)
   scene.collisionsEnabled = true
 
-  camera.keysUp    = [87] // W
-  camera.keysDown  = [83] // S
-  camera.keysLeft  = [65] // A
-  camera.keysRight = [68] // D
+  camera.keysUp    = [87]
+  camera.keysDown  = [83]
+  camera.keysLeft  = [65]
+  camera.keysRight = [68]
 
   let menuOpen = false
+  let verticalVelocity = 0
   let isGrounded = false
+  let spacePressed = false
 
-  // Track grounded state for jump
-  scene.registerBeforeRender(() => {
-    const prevY = camera.position.y
-    // If velocity is near zero vertically and close to ground level, we're grounded
-    isGrounded = camera.position.y <= 1.82
-  })
+const GRAVITY = -0.008    // was -0.018, lower = floatier fall
+const JUMP_FORCE = 0.4   // was 0.25, tweak to taste
+const PLAYER_HEIGHT = 1.8
+
+scene.registerBeforeRender(() => {
+  // Jump check at frame level, not keydown level
+  if (spacePressed && isGrounded) {
+    isGrounded = false
+    verticalVelocity = JUMP_FORCE
+    spacePressed = false  // consume it
+  }
+
+  const prevY = camera.position.y
+  verticalVelocity += GRAVITY
+  camera.position.y += verticalVelocity
+
+  if (camera.position.y <= PLAYER_HEIGHT) {
+    camera.position.y = PLAYER_HEIGHT
+    verticalVelocity = 0
+    isGrounded = true
+  } else {
+    const actualMove = camera.position.y - prevY
+    if (Math.abs(actualMove) < Math.abs(verticalVelocity) * 0.5) {
+      if (verticalVelocity < 0) {
+        verticalVelocity = 0
+        isGrounded = true
+      } else {
+        verticalVelocity = 0
+      }
+    } else {
+      isGrounded = false
+    }
+  }
+})
 
   function openMenu() {
     menuOpen = true
@@ -48,23 +77,23 @@ export function createPlayer(scene, canvas) {
     if (!menuOpen) canvas.requestPointerLock()
   }
 
-  window.addEventListener('keydown', (e) => {
-    // I key toggles menu
-    if (e.code === 'KeyI') {
-      e.preventDefault()
-      menuOpen ? closeMenu() : openMenu()
-    }
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault()
+    spacePressed = true
+  }
+  if (e.code === 'KeyI') {
+    e.preventDefault()
+    menuOpen ? closeMenu() : openMenu()
+  }
+})
 
-    // Spacebar jump
-    if (e.code === 'Space' && isGrounded) {
-      e.preventDefault()
-      camera.cameraDirection.y += 0.5
-    }
-  })
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') spacePressed = false
+})
 
-  // Wire up sliders and resume button after DOM is ready
+
   window.addEventListener('DOMContentLoaded', () => bindUI())
-  // If DOM already loaded (likely), bind immediately too
   if (document.readyState !== 'loading') bindUI()
 
   function bindUI() {
@@ -74,10 +103,10 @@ export function createPlayer(scene, canvas) {
     const speedValue        = document.getElementById('speed-value')
     const resumeBtn         = document.getElementById('resume-btn')
 
-    if (!sensitivitySlider) return // guard if called before DOM
+    if (!sensitivitySlider) return
 
     sensitivitySlider.addEventListener('input', () => {
-      camera.angularSensibility = Number(sensitivitySlider.value)
+      camera.angularSensibility = 4500 - (Number(sensitivitySlider.value) * 400)
       sensitivityValue.textContent = sensitivitySlider.value
     })
 
